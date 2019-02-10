@@ -1,0 +1,61 @@
+version: '2'
+services:
+  kibana:
+    image: docker.elastic.co/kibana/kibana:6.6.0
+    environment:
+      SERVER_NAME: kibana
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    ports:
+     - "5601:5601"
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:6.6.0
+    environment:
+      discovery.type: single-node
+      cluster.name: docker-cluster
+    volumes:
+     - esdata1:/usr/share/elasticsearch/data
+    ports:
+     - "9200:9200"
+  logstash:
+    image: docker.elastic.co/logstash/logstash:6.6.0
+    volumes:
+     - "./logstash/:/usr/share/logstash/config/"
+  zoo1:
+    image: zookeeper:3.4.9
+    hostname: zoo1
+    ports:
+      - "2181:2181"
+    environment:
+        ZOO_MY_ID: 1
+        ZOO_PORT: 2181
+        ZOO_SERVERS: server.1=zoo1:2888:3888
+    volumes:
+      - zkdata1:/data
+      - zklogs1:/datalog
+  kafka1:
+    image: confluentinc/cp-kafka:5.1.0
+    hostname: kafka1
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: LISTENER_DOCKER_INTERNAL://10.61.6.11:19092,LISTENER_DOCKER_EXTERNAL://127.0.0.1:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: LISTENER_DOCKER_INTERNAL:PLAINTEXT,LISTENER_DOCKER_EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: LISTENER_DOCKER_INTERNAL
+      KAFKA_ZOOKEEPER_CONNECT: "zoo1:2181"
+      KAFKA_BROKER_ID: 1
+      KAFKA_LOG4J_LOGGERS: "kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    volumes:
+      - kafkadata1:/var/lib/kafka/data
+    depends_on:
+      - zoo1
+volumes:
+  esdata1:
+    driver: local
+  kafkadata1:
+    driver: local
+  zkdata1:
+    driver: local
+  zklogs1:
+    driver: local
